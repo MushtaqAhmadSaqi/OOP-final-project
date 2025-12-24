@@ -1,30 +1,38 @@
-public abstract class Person{
+import java.io.*;
+public abstract class Person implements Serializable{
     private String name;
-    private String address;
     private int contactNumber;
 
-    public Person(String name, String address, int contactNumber) {
-        this.name = name;
-        this.address = address;
-        this.contactNumber = contactNumber;
+    public Person() {
+
     }
 
-    public Person(String name,int contactNumber){
+    public Person(String name, int contactNumber) {
         this.name = name;
         this.contactNumber = contactNumber;
     }
-    public abstract boolean equals(Person person);
-    public abstract String toString();
+    
+    @Override
+    public abstract boolean equals(Object o);
 
     public String getName() {
         return name;
     }
 
-    public String getAddress() {
-        return address;
+    public void setName(String name) {
+        this.name = name;
     }
 
     public int getContactNumber() {
         return contactNumber;
+    }
+
+    public void setContactNumber(int contactNumber) {
+        this.contactNumber = contactNumber;
+    }
+
+    @Override
+    public String toString() {
+        return "Name : " + name + ", Contact : " + contactNumber;
     }
 }
