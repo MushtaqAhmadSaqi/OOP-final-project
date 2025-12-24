@@ -1,22 +1,23 @@
 
-
-public abstract  class Room {
+import java.io.*;
+public abstract  class Room implements Serializable{
     private int roomNumber;
     private double pricePerNight;
     private boolean status;
 
-    public Room(int roomNumber, double pricePerNight, boolean status) {
+    public Room(int roomNumber, double pricePerNight) { 
         this.roomNumber = roomNumber;
         this.pricePerNight = pricePerNight;
-        this.status = status;
+        this.status = true;
     }
 
-    public abstract boolean isAvaiable();
-    // public abstract double calculatePrice();
+    public abstract boolean isAvailable();
+    public abstract double calculatePrice(int days);
 
     public int getRoomNumber() {
         return roomNumber;
     }
+    
 
     public double getPricePerNight() {
         return pricePerNight;
@@ -25,26 +26,71 @@ public abstract  class Room {
     public boolean getStatus() {
         return status;
     }
-}
 
-interface Billable{
-    double calculatePrice();
-}
-class Single extends Room implements Billable{
-    private final String bedType = "Twin";
-    private final int maxCapacity = 1;
-    private final double price = 2000;
-
-    public Single(int roomNumber, double pricePerNight, boolean status) {
-        super(roomNumber, pricePerNight, status);
+    public String AvailableOrBooked() {
+        if (this.getStatus()) return "AVAILABLE";
+        else return "BOOKED";
+    }
+    
+    public boolean equals(Object obj) {
+        if(this == obj) {
+            return true;
+        }
+        if(obj == null || this.getClass() != obj.getClass()) {
+            return false;
+        }
+        Room room = (Room) obj;
+        return this.roomNumber == room.roomNumber;
+    }
+    
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("\n=====  Room Details  ==== \n");
+        sb.append("Room Number : ").append(roomNumber);
+        sb.append("\nPrice Per Night : ").append(pricePerNight);
+        sb.append("\nStatus : ");
+        sb.append(status? "Available" : "Booked");
+        return sb.toString();
     }
 
-    public boolean isAvaiable(){
+    public void setRoomNumber(int roomNumber) {
+        if(roomNumber <= 0) {
+            throw new IllegalArgumentException("Invalid room number");
+        }
+        this.roomNumber = roomNumber;
+    }    
+
+    public void setPricePerNight(double pricePerNight) {
+        if( pricePerNight < 0){
+            throw new IllegalArgumentException("Price can not be negtive number!");
+        }
+        this.pricePerNight = pricePerNight;
+    }
+
+    public void setStatus(boolean status) {
+        this.status = status;
+    }
+
+}
+
+class SingleRoom extends Room {
+    private final String bedType = "Single";
+    private final int maxCapacity = 1;
+
+    public SingleRoom(int roomNumber, double pricePerNight) {
+
+        super(roomNumber, pricePerNight);
+    }
+
+    @Override
+    public boolean isAvailable(){
         return getStatus();  
     }
 
-    public double calculatePrice(){
-       return price * getPricePerNight();
+    @Override
+    public double calculatePrice(int days){
+       return  days * getPricePerNight();
     }
 
     public String getBedType() {
@@ -55,23 +101,47 @@ class Single extends Room implements Billable{
         return maxCapacity;
     }
 
+
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("\nSingleRoom\n");
+        sb.append("bedType : ").append(bedType);
+        sb.append("\nMax Capacity : ").append(maxCapacity);
+        return super.toString() + sb.toString();
+    }
+    @Override
+    public boolean equals(Object obj) {
+        if(this == obj) {
+            return true;
+        }
+        if(obj == null || this.getClass() != obj.getClass()) {
+            return false;
+        }
+        SingleRoom room = (SingleRoom) obj;
+        return this.getRoomNumber() == room.getRoomNumber();
+    }
+
+
 }
 
-class Double extends Room implements Billable{
+class DoubleRoom extends Room {
     private final String bedType = "Queen";
     private final int maxCapacity = 2;
-    private final double price = 4000;
 
-    public Double(int roomNumber, double pricePerNight, boolean status) {
-        super(roomNumber, pricePerNight, status);
+    public DoubleRoom(int roomNumber, double pricePerNight) {
+        super(roomNumber, pricePerNight);
     }
 
-    public boolean isAvaiable(){
+    @Override
+    public boolean isAvailable(){
         return getStatus();  
     }
 
-    public double calculatePrice(){
-       return price * getPricePerNight();
+    @Override
+    public double calculatePrice(int days){
+       return days * getPricePerNight();
     }
 
     public String getBedType() {
@@ -81,22 +151,46 @@ class Double extends Room implements Billable{
     public int getMaxCapacity() {
         return maxCapacity;
     }
+
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("\nDoubleRoom\n");
+        sb.append("bedType : ").append(bedType);
+        sb.append("\nMax Capacity : ").append(maxCapacity);
+        return super.toString() + sb.toString();
+    }
+    
+    @Override
+    public boolean equals(Object obj) {
+        if(this == obj) {
+            return true;
+        }
+        if(obj == null || this.getClass() != obj.getClass()) {
+            return false;
+        }
+        DoubleRoom room = (DoubleRoom) obj;
+        return this.getRoomNumber() == room.getRoomNumber();
+    }
+
 }
-class Family extends Room implements Billable{
-    private final String bedType = "Bunk";
+class FamilyRoom extends Room {
+    private final String bedType = "Two Double Beds";
     private final int maxCapacity = 4;
-    private final double price = 5500;
 
-    public Family(int roomNumber, double pricePerNight, boolean status) {
-        super(roomNumber, pricePerNight, status);
+    public FamilyRoom(int roomNumber, double pricePerNight) {
+        super(roomNumber, pricePerNight);
     }
 
-    public boolean isAvaiable(){
+    @Override
+    public boolean isAvailable(){
         return getStatus();  
     }
 
-    public double calculatePrice(){
-       return price * getPricePerNight();
+    @Override
+    public double calculatePrice(int days){
+       return days * getPricePerNight();
     }
 
     public String getBedType() {
@@ -106,4 +200,25 @@ class Family extends Room implements Billable{
     public int getMaxCapacity() {
         return maxCapacity;
     }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("\nFamilyRoom\n");
+        sb.append("bedType : ").append(bedType);
+        sb.append("\nMax Capacity : ").append(maxCapacity);
+        return super.toString() + sb.toString();
+    }
+    @Override
+    public boolean equals(Object obj) {
+        if(this == obj) {
+            return true;
+        }
+        if(obj == null || this.getClass() != obj.getClass()) {
+            return false;
+        }
+        FamilyRoom room = (FamilyRoom) obj;
+        return this.getRoomNumber() == room.getRoomNumber();
+    }
+    
 }
