@@ -2,23 +2,26 @@ public class Guest extends Person{
     private String guestID;
     private int familyMember;
 
-    
-    public Guest(String name, String address, int contactNumber, String guestID, int familyMember) {
-        super(name, address, contactNumber);
+    public Guest () {
+
+    }
+
+    public Guest(String guestID, String name, int contactNumber, int familyMember) {
+        super(name, contactNumber);
         this.guestID = guestID;
         this.familyMember = familyMember;
     }
 
-    public boolean equals(Person p){
-        if(this.getName().equalsIgnoreCase(p.getName())){
-            System.out.println("This is the same Person");
-            return true;
-        }
-        return false;
-    }
+    // public Guest(String name, int contactNumber, String guestID, int familyMember) {
+    //     super(name, contactNumber);
+    //     this.guestID = guestID;
+    //     this.familyMember = familyMember;
+    // }
 
+    @Override
     public String toString(){
-        return "Guest Name : " + getName() + "Guest ID : " + getGuestID() ;
+        return "Guest ID : " + guestID + ", Guest Name : " + getName() 
+        + ", Contact : " + getContactNumber() + ", Family Members : " + familyMember;
     }
 
     public String getGuestID() {
@@ -29,4 +32,13 @@ public class Guest extends Person{
         return familyMember;
     }
     
+
+    @Override
+    public boolean equals(Object o) {
+        if ( o == null || !(o instanceof Guest) ) {
+            return false;
+        }
+        Guest guest = (Guest) o;
+        return guestID.equals(guest.guestID);
+    }
 }
