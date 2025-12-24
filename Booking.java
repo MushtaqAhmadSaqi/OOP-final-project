@@ -1,30 +1,59 @@
-public class Booking {
-    private int roomNumber;
-    Guest guests;
+import java.io.*;
+import java.time.LocalDate;
+
+public class Booking implements Serializable {
+
+    private Room room;
+    private Guest guest;
+    private LocalDate checkInDate;
     
     public Booking() {
+        
+    }
+    
+    public Booking(Room room, Guest guests) {
+        this.room = room;
+        this.guest = guests;  
+        checkInDate = LocalDate.now();
+    }
+   
+    public LocalDate getCheckInDate() {
+        return checkInDate;
     }
 
-    public Booking(int roomNumber, Guest guests) {
-        this.roomNumber = roomNumber;
-        this.guests = guests;
-    }
-
-    public int getRoomNumber() {
-        return roomNumber;
+    public Room getRoom() {
+        return room;
     }
 
     public Guest getGuests() {
-        return guests;
+        return guest;
     }
 
-    public void setRoomNumber(int roomNumber) {
-        this.roomNumber = roomNumber;
+    public void setRoom(Room room) {
+        this.room = room;
     }
 
     public void setGuests(Guest guests) {
-        this.guests = guests;
+        this.guest = guests;
     } 
-
     
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Booking Date : ").append(checkInDate);
+        sb.append("\nGuest Name : ").append(guest.getName());
+        sb.append("\nRoom Number : ").append(room.getRoomNumber());
+        sb.append("\n===========\n");
+        return sb.toString();
+
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        Booking b = (Booking) obj;
+        return room.equals(b.room) && guest.equals(b.guest);
+    }
+
 }
