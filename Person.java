@@ -1,8 +1,5 @@
 import java.io.*;
-
-public abstract class Person implements Serializable {
-    private static final long serialVersionUID = 1L;
-
+public abstract class Person implements Serializable{
     private String name;
     private int contactNumber;
 
@@ -11,8 +8,8 @@ public abstract class Person implements Serializable {
     }
 
     public Person(String name, int contactNumber) {
-        setName(name);
-        setContactNumber(contactNumber);
+        this.name = name;
+        this.contactNumber = contactNumber;
     }
     
     @Override
@@ -23,10 +20,7 @@ public abstract class Person implements Serializable {
     }
 
     public void setName(String name) {
-        if (name == null || name.trim().isEmpty()) {
-            throw new IllegalArgumentException("Name cannot be empty.");
-        }
-        this.name = name.trim();
+        this.name = name;
     }
 
     public int getContactNumber() {
@@ -34,9 +28,6 @@ public abstract class Person implements Serializable {
     }
 
     public void setContactNumber(int contactNumber) {
-        if (contactNumber <= 0) {
-            throw new IllegalArgumentException("Contact number must be positive.");
-        }
         this.contactNumber = contactNumber;
     }
 
