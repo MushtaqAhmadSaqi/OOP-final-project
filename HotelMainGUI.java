@@ -22,12 +22,13 @@ public class HotelMainGUI extends JFrame {
     private final Color PRIMARY_COLOR = new Color(70, 130, 180); 
 
     public HotelMainGUI() {
-        manager = new Manager("Admin", 0000, 0.0, "Saqi", "123");
-        receptionist = new Receptionist("FrontDesk", 0000, 0.0, "Saqi", "123");
+        manager = new Manager("Admin", 1, 0.0, "Saqi", "123");
+        receptionist = new Receptionist("FrontDesk", 1, 0.0, "Saqi", "123");
         
 
         manager.load(); 
         receptionist.load();
+        synchronizeRoomStatus();
 
         setTitle("Hotel Management System - GUI Edition");
         setSize(1100, 750);
@@ -56,12 +57,34 @@ public class HotelMainGUI extends JFrame {
                 int confirm = JOptionPane.showConfirmDialog(null, 
                     "Are you sure you want to exit? Data will be saved.", "Exit", JOptionPane.YES_NO_OPTION);
                 if (confirm == JOptionPane.YES_OPTION) {
-                    manager.save();
-                    receptionist.save();
+                    saveAll();
                     System.exit(0);
                 }
             }
         });
+    }
+
+    private void saveAll() {
+        manager.save();
+        receptionist.save();
+    }
+
+    private void synchronizeRoomStatus() {
+        if (manager == null || receptionist == null || manager.getRooms() == null || receptionist.getBookings() == null) {
+            return;
+        }
+
+        for (Room room : manager.getRooms()) {
+            room.setStatus(true);
+        }
+
+        for (Booking booking : receptionist.getBookings()) {
+            Room masterRoom = manager.selectRoom(booking.getRoom().getRoomNumber());
+            if (masterRoom != null) {
+                masterRoom.setStatus(false);
+                booking.setRoom(masterRoom);
+            }
+        }
     }
 
 
@@ -106,6 +129,7 @@ public class HotelMainGUI extends JFrame {
 
             if (role.equals("Manager")) {
                 if (id.equals(manager.getManagerID()) && pass.equals(manager.getPassCode())) {
+                    synchronizeRoomStatus();
                     cardLayout.show(mainPanel, "MANAGER");
                     refreshManagerTables();
                 } else {
@@ -113,6 +137,7 @@ public class HotelMainGUI extends JFrame {
                 }
             } else {
                 if (id.equals(receptionist.getReceptID()) && pass.equals(receptionist.getPassCode())) {
+                    synchronizeRoomStatus();
                     cardLayout.show(mainPanel, "RECEPTIONIST");
                     refreshReceptionistTables();
                 } else {
@@ -177,6 +202,7 @@ public class HotelMainGUI extends JFrame {
             if (row != -1) {
                 int roomNo = (int) roomModel.getValueAt(row, 0);
                 manager.removeRoom(roomNo);
+                saveAll();
                 refreshManagerTables();
             } else {
                 JOptionPane.showMessageDialog(this, "Select a room from the table first.");
@@ -225,11 +251,15 @@ public class HotelMainGUI extends JFrame {
                 String id = (String) staffModel.getValueAt(row, 0);
                 String name = (String) staffModel.getValueAt(row, 1);
                 manager.removeStaff(name, id);
+                saveAll();
                 refreshManagerTables();
             }
         });
 
-        logoutM.addActionListener(e -> cardLayout.show(mainPanel, "LOGIN"));
+        logoutM.addActionListener(e -> {
+            saveAll();
+            cardLayout.show(mainPanel, "LOGIN");
+        });
 
         managerTabs.addTab("Manage Rooms", roomPanel);
         managerTabs.addTab("Manage Staff", staffPanel);
@@ -250,6 +280,7 @@ public class HotelMainGUI extends JFrame {
                 double price = Double.parseDouble(priceField.getText());
                 Hotel.RoomType rt = Hotel.RoomType.valueOf((String) typeCombo.getSelectedItem());
                 manager.addRoom(rNo, price, rt);
+                saveAll();
                 refreshManagerTables();
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "Invalid Input!");
@@ -282,6 +313,7 @@ public class HotelMainGUI extends JFrame {
 
                 Staff newStaff = new Staff(nameField.getText(), contact, sal, idField.getText(), descField.getText(), s);
                 manager.addStaff(newStaff);
+                saveAll();
                 
                 refreshManagerTables(); // This updates the GUI table
                 JOptionPane.showMessageDialog(this, "Staff Added Successfully!");
@@ -352,6 +384,7 @@ public class HotelMainGUI extends JFrame {
                     int roomNum = receptionist.checkOut(id);
                     if (roomNum != -1) {
                         manager.setRoomStatus(roomNum, true);
+                        saveAll();
                         refreshReceptionistTables();
                         refreshManagerTables();
                     }
@@ -399,7 +432,10 @@ public class HotelMainGUI extends JFrame {
         modifyBookBtn.addActionListener(e -> showModifyBookingDialog());
 
         refreshBtn.addActionListener(e -> refreshReceptionistTables());
-        logoutR.addActionListener(e -> cardLayout.show(mainPanel, "LOGIN"));
+        logoutR.addActionListener(e -> {
+            saveAll();
+            cardLayout.show(mainPanel, "LOGIN");
+        });
 
 
         bookingModel = new DefaultTableModel(new String[]{"Room", "Guest ID", "Guest Name", "Contact"}, 0);
@@ -435,6 +471,7 @@ public class HotelMainGUI extends JFrame {
                     Guest g = new Guest(guestIdF.getText(), nameF.getText(), contact, fam);
                     
                     receptionist.checkIn(r, g);
+                    saveAll();
                     refreshReceptionistTables();
                     JOptionPane.showMessageDialog(this, "Check-In Successful!");
                 } else {
@@ -486,6 +523,7 @@ public class HotelMainGUI extends JFrame {
                 Guest newGuest = new Guest(guestIdF.getText(), nameF.getText(), contact, fam);
                 
                 receptionist.modifyGuestInBooking(rNo, newGuest);
+                saveAll();
                 refreshReceptionistTables();
                 JOptionPane.showMessageDialog(this, "Booking Updated!");
             }
