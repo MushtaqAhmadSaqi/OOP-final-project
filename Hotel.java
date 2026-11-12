@@ -1,3 +1,5 @@
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.*;
 
 public class Hotel {
@@ -11,13 +13,13 @@ public class Hotel {
     }
 
     private void saveAll() {
-        manager.save();
-        receptionist.save();
+        if (manager != null) manager.save();
+        if (receptionist != null) receptionist.save();
     }
 
     private void loadAll() {
-        manager.load();
-        receptionist.load();
+        if (manager != null) manager.load();
+        if (receptionist != null) receptionist.load();
         synchronizeRoomStatus();
     }
 
@@ -26,17 +28,28 @@ public class Hotel {
             return;
         }
 
+        // Reset all rooms to available
         for (Room room : manager.getRooms()) {
             room.setStatus(true);
         }
 
+        // Mark booked rooms as unavailable and sync booking's room reference
         for (Booking booking : receptionist.getBookings()) {
-            Room masterRoom = manager.selectRoom(booking.getRoom().getRoomNumber());
-            if (masterRoom != null) {
-                masterRoom.setStatus(false);
-                booking.setRoom(masterRoom);
+            if (booking.getRoom() != null) {
+                Room masterRoom = manager.selectRoom(booking.getRoom().getRoomNumber());
+                if (masterRoom != null) {
+                    masterRoom.setStatus(false);
+                    booking.setRoom(masterRoom);
+                }
             }
         }
+    }
+
+    private static boolean constantTimePasswordCheck(String input, String expected) {
+        if (input == null || expected == null) return false;
+        byte[] a = input.getBytes(StandardCharsets.UTF_8);
+        byte[] b = expected.getBytes(StandardCharsets.UTF_8);
+        return MessageDigest.isEqual(a, b);
     }
 
     public void displayMainMenu() {
@@ -44,7 +57,6 @@ public class Hotel {
         System.out.println("1. Login as Manager");
         System.out.println("2. Login as Receptionist");
         System.out.println("3. Exit");
-        System.out.print("Enter your choice : ");
     }
 
     public void displayReceptionistMenu() {
@@ -57,7 +69,6 @@ public class Hotel {
         System.out.println("6. Display Available rooms");
         System.out.println("7. Display all Bookings");
         System.out.println("8. Log out");
-        System.out.print("Enter your choice : ");
     }
 
     public void displayManagerMenu() {
@@ -70,17 +81,13 @@ public class Hotel {
         System.out.println("6. Remove Staff Member");
         System.out.println("7. Search Staff Member");
         System.out.println("8. Log out");
-        System.out.print("Enter your choice : ");
     }
 
     public boolean managerLogin() {
-        Input.sc.nextLine();
-
         System.out.println("\n====== Manager Login Portal ======");
-        System.out.print("Enter Manager ID: ");
-        String inputID = Input.sc.nextLine();
+        String inputID = Input.readLine("Enter Manager ID: ");
 
-        if (!inputID.equals(manager.getManagerID())) {
+        if (!inputID.equalsIgnoreCase(manager.getManagerID())) {
             System.out.println("Manager ID not found.");
             System.out.println("Returning to Main Menu...");
             return false;
@@ -88,10 +95,9 @@ public class Hotel {
 
         int tries = 3;
         while (tries > 0) {
-            System.out.print("Enter Passcode: ");
-            String inputPass = Input.sc.nextLine();
+            String inputPass = Input.readLine("Enter Passcode: ");
 
-            if (inputPass.equals(manager.getPassCode())) {
+            if (constantTimePasswordCheck(inputPass, manager.getPassCode())) {
                 System.out.println("\nLogin Successful! Welcome back, " + manager.getName() + ".");
                 return true;
             }
@@ -102,18 +108,15 @@ public class Hotel {
             }
         }
 
-        System.out.println("Too many failed attempts...");
+        System.out.println("Too many failed attempts. Returning to Main Menu...");
         return false;
     }
 
     public boolean receptionistLogin() {
-        Input.sc.nextLine();
-
         System.out.println("\n====== Receptionist Login Portal ======");
-        System.out.print("Enter Receptionist ID: ");
-        String inputID = Input.sc.nextLine();
+        String inputID = Input.readLine("Enter Receptionist ID: ");
 
-        if (!inputID.equals(receptionist.getReceptID())) {
+        if (!inputID.equalsIgnoreCase(receptionist.getReceptID())) {
             System.out.println("Receptionist not found.");
             System.out.println("Returning to Main Menu...");
             return false;
@@ -121,10 +124,9 @@ public class Hotel {
 
         int tries = 3;
         while (tries > 0) {
-            System.out.print("Enter Passcode: ");
-            String inputPass = Input.sc.nextLine();
+            String inputPass = Input.readLine("Enter Passcode: ");
 
-            if (inputPass.equals(receptionist.getPassCode())) {
+            if (constantTimePasswordCheck(inputPass, receptionist.getPassCode())) {
                 System.out.println("\nLogin Successful! Welcome back, " + receptionist.getName() + ".");
                 return true;
             }
@@ -135,14 +137,16 @@ public class Hotel {
             }
         }
 
-        System.out.println("Too many failed attempts...");
+        System.out.println("Too many failed attempts. Returning to Main Menu...");
         return false;
     }
 
     public boolean isAvailable(ArrayList<Room> rooms) {
-        for (Room room : rooms) {
-            if (room.getStatus()) {
-                return true;
+        if (rooms != null) {
+            for (Room room : rooms) {
+                if (room.getStatus()) {
+                    return true;
+                }
             }
         }
         System.out.println("No Rooms Currently Available!");
@@ -150,57 +154,48 @@ public class Hotel {
     }
 
     public void checkInGuest() {
-        Input.sc.nextLine();
-
-        System.out.println("\n====== Guest Check-In  ======\n");
+        System.out.println("\n====== Guest Check-In ======\n");
 
         if (!manager.displayRoomAvailability()) {
-            System.out.println("No Rooms Available!");
             return;
         }
 
         try {
-            System.out.print("Select Room No: ");
-            int roomNo = Input.sc.nextInt();
-            Input.sc.nextLine();
+            int roomNo = Input.readPositiveInt("Select Room No (or 0 to cancel): ");
+            if (roomNo == 0) return;
 
             Room room = manager.selectRoom(roomNo);
             if (room == null) {
+                System.out.println("Room " + roomNo + " does not exist.");
+                return;
+            }
+            if (!room.isAvailable()) {
+                System.out.println("Room " + roomNo + " is already booked.");
                 return;
             }
 
             System.out.println("\n--- Guest Details ---");
-            System.out.print("Enter guest ID : ");
-            String id = Input.sc.nextLine();
-            System.out.print("Enter name : ");
-            String name = Input.sc.nextLine();
-            System.out.print("Enter contact Number : ");
-            int contact = Input.sc.nextInt();
-            System.out.print("Enter total family Members : ");
-            int familyMember = Input.sc.nextInt();
-            Input.sc.nextLine();
+            String id = Input.readNonEmptyString("Enter guest ID: ");
+            String name = Input.readNonEmptyString("Enter guest name: ");
+            int contact = Input.readPositiveInt("Enter contact number (numeric): ");
+            int familyMember = Input.readInt("Enter total family members (max " + room.getMaxCapacity() + "): ", 1, room.getMaxCapacity());
 
             Guest guest = new Guest(id, name, contact, familyMember);
             receptionist.checkIn(room, guest);
             saveAll();
-        } catch (InputMismatchException ex) {
-            Input.sc.nextLine();
-            System.out.println("Invalid input. Numeric fields must contain numbers.");
         } catch (IllegalArgumentException ex) {
             System.out.println("Check-in failed: " + ex.getMessage());
         }
     }
 
     public void checkOutGuest() {
-        Input.sc.nextLine();
-
-        System.out.println("\n====== Guest Check-Out  ======");
+        System.out.println("\n====== Guest Check-Out ======");
         System.out.println("=== Currently Active Bookings ===");
         receptionist.displayActiveGuestIDs();
         System.out.println("---------------------------------");
 
-        System.out.print("Enter Guest ID to check out: ");
-        String id = Input.sc.nextLine();
+        String id = Input.readLine("Enter Guest ID to check out (leave blank to cancel): ");
+        if (id.isEmpty()) return;
 
         int roomNum = receptionist.checkOut(id);
         if (roomNum != -1) {
@@ -210,56 +205,54 @@ public class Hotel {
     }
 
     public void searchBooking() {
-        Input.sc.nextLine();
-
         System.out.println("\n=== Booking Search ===\n");
-        System.out.print("Enter Guest Name : ");
-        String name = Input.sc.nextLine();
-        receptionist.searchBooking(name);
+        String query = Input.readLine("Enter Guest Name or ID: ");
+        receptionist.searchBooking(query);
     }
 
     public void searchGuest() {
-        Input.sc.nextLine();
         System.out.println("\n=== Guest Search ===\n");
         receptionist.displayActiveGuestIDs();
-        System.out.print("\nEnter Guest ID: ");
-        String id = Input.sc.nextLine();
+        String id = Input.readLine("\nEnter Guest ID: ");
         receptionist.displayGuestHistory(id);
     }
 
     public void modifyBooking() {
         System.out.println("\n=== Modifying Booking ===\n");
-        try {
-            int roomNo;
-            while (true) {
-                System.out.print("Enter Room Number: ");
-                roomNo = Input.sc.nextInt();
-                if (!manager.roomExists(roomNo)) {
-                    System.out.println("Room not Found!\nTry a different room No.");
-                    continue;
-                }
-                Input.sc.nextLine();
+        if (receptionist.getBookings().isEmpty()) {
+            System.out.println("No active bookings to modify.");
+            return;
+        }
+
+        receptionist.displayBookingHistory();
+        int roomNo = Input.readPositiveInt("Enter Room Number to modify (or 0 to cancel): ");
+        if (roomNo == 0) return;
+
+        // Verify booking exists before prompting for details
+        boolean hasBooking = false;
+        for (Booking b : receptionist.getBookings()) {
+            if (b.getRoom() != null && b.getRoom().getRoomNumber() == roomNo) {
+                hasBooking = true;
                 break;
             }
+        }
 
+        if (!hasBooking) {
+            System.out.println("No active booking found for Room " + roomNo + ".");
+            return;
+        }
+
+        try {
             System.out.println("--- Enter New Guest Details ---");
-            System.out.print("Enter guest ID : ");
-            String id = Input.sc.nextLine();
-            System.out.print("Enter name : ");
-            String name = Input.sc.nextLine();
-            System.out.print("Enter contact Number : ");
-            int contact = Input.sc.nextInt();
-            Input.sc.nextLine();
-            System.out.print("Enter total family Members : ");
-            int familyMember = Input.sc.nextInt();
-            Input.sc.nextLine();
+            String id = Input.readNonEmptyString("Enter new guest ID: ");
+            String name = Input.readNonEmptyString("Enter new guest name: ");
+            int contact = Input.readPositiveInt("Enter new contact number: ");
+            int familyMember = Input.readPositiveInt("Enter total family members: ");
 
             Guest guest = new Guest(id, name, contact, familyMember);
-            receptionist.modifyGuestInBooking(roomNo, guest);
-            saveAll();
-        } catch (InputMismatchException ex) {
-            Input.sc.nextLine();
-            System.out.println("Invalid input. Numeric fields must contain numbers.");
+            if (receptionist.modifyGuestInBooking(roomNo, guest)) {
+                saveAll();
+            }
         } catch (IllegalArgumentException ex) {
             System.out.println("Modification failed: " + ex.getMessage());
         }
@@ -274,136 +267,94 @@ public class Hotel {
     }
 
     public void addRoom() {
-        RoomType rt = null;
-        while (rt == null) {
-            System.out.println("1.SINGLE-ROOM ");
-            System.out.println("2.DOUBLE-ROOM ");
-            System.out.println("3.FAMILY-ROOM ");
-            System.out.print("Enter Room Type : ");
-            int n = Input.sc.nextInt();
-            switch (n) {
-                case 1:
-                    rt = RoomType.SINGLEROOM;
-                    break;
-                case 2:
-                    rt = RoomType.DOUBLEROOM;
-                    break;
-                case 3:
-                    rt = RoomType.FAMILYROOM;
-                    break;
-                default:
-                    System.out.println("Invalid Input. Try Again!");
-                    break;
-            }
+        System.out.println("\n--- Add New Room ---");
+        System.out.println("1. SINGLE-ROOM");
+        System.out.println("2. DOUBLE-ROOM");
+        System.out.println("3. FAMILY-ROOM");
+        int n = Input.readInt("Enter Room Type (1-3): ", 1, 3);
+        RoomType rt;
+        switch (n) {
+            case 1: rt = RoomType.SINGLEROOM; break;
+            case 2: rt = RoomType.DOUBLEROOM; break;
+            case 3: rt = RoomType.FAMILYROOM; break;
+            default: return;
         }
 
         try {
-            System.out.println("Enter Room Data...");
-            System.out.print("Enter Room No : ");
-            int roomNo = Input.sc.nextInt();
-            System.out.print("Enter Price per Night : ");
-            double ppn = Input.sc.nextDouble();
+            int roomNo = Input.readPositiveInt("Enter Room Number: ");
+            double ppn = Input.readDouble("Enter Price per Night: ", 1.0);
             manager.addRoom(roomNo, ppn, rt);
             saveAll();
-        } catch (InputMismatchException ex) {
-            Input.sc.nextLine();
-            System.out.println("Invalid input. Room number and price must be numeric.");
         } catch (IllegalArgumentException ex) {
             System.out.println("Room could not be added: " + ex.getMessage());
         }
     }
 
     public void removeRoom() {
-        try {
-            System.out.print("Enter Room Number : ");
-            int n = Input.sc.nextInt();
-            manager.removeRoom(n);
+        int n = Input.readPositiveInt("Enter Room Number to remove: ");
+        if (manager.removeRoom(n)) {
             saveAll();
-        } catch (InputMismatchException ex) {
-            Input.sc.nextLine();
-            System.out.println("Invalid room number.");
         }
     }
 
     public void searchRoom() {
-        try {
-            System.out.println("Enter Room Number : ");
-            int roomNumber = Input.sc.nextInt();
-            manager.searchRoom(roomNumber);
-        } catch (InputMismatchException ex) {
-            Input.sc.nextLine();
-            System.out.println("Invalid room number.");
-        }
+        int roomNumber = Input.readPositiveInt("Enter Room Number: ");
+        manager.searchRoom(roomNumber);
     }
 
     public void displayRooms() {
-        System.out.println("Rooms And Their Status!");
+        System.out.println("Rooms And Their Status:");
         manager.displayAllRooms();
     }
 
     public void addStaff() {
-        Input.sc.nextLine();
         try {
-            System.out.println("Enter Staff Details: ");
-            System.out.print("ID: ");
-            String id = Input.sc.nextLine();
-            System.out.print("Name: ");
-            String name = Input.sc.nextLine();
-            System.out.print("Contact: ");
-            int ct = Input.sc.nextInt();
-            System.out.print("Salary: ");
-            double sal = Input.sc.nextDouble();
-            Input.sc.nextLine();
-            System.out.print("Description: ");
-            String desc = Input.sc.nextLine();
-            System.out.println("Shift [DAY / NIGHT / ALLDAY]");
+            System.out.println("\n--- Enter Staff Details ---");
+            String id = Input.readNonEmptyString("Staff ID: ");
+            String name = Input.readNonEmptyString("Name: ");
+            int ct = Input.readPositiveInt("Contact Number: ");
+            double sal = Input.readDouble("Salary: ", 0.0);
+            String desc = Input.readNonEmptyString("Role Description: ");
 
             Staff.Shift shift = null;
             while (shift == null) {
-                try {
-                    String sh = Input.sc.nextLine().trim().toUpperCase().replace("-", "");
-                    shift = Staff.Shift.valueOf(sh);
-                } catch (IllegalArgumentException ie) {
-                    System.out.println("Shift can only be [DAY / NIGHT / ALLDAY].");
+                System.out.println("Shift Options: 1. DAY  2. NIGHT  3. ALLDAY");
+                int choice = Input.readInt("Select shift (1-3): ", 1, 3);
+                switch (choice) {
+                    case 1: shift = Staff.Shift.DAY; break;
+                    case 2: shift = Staff.Shift.NIGHT; break;
+                    case 3: shift = Staff.Shift.ALLDAY; break;
                 }
             }
 
             Staff staff = new Staff(name, ct, sal, id, desc, shift);
             manager.addStaff(staff);
             saveAll();
-        } catch (InputMismatchException ex) {
-            Input.sc.nextLine();
-            System.out.println("Invalid input. Contact and salary must be numeric.");
         } catch (IllegalArgumentException ex) {
             System.out.println("Staff could not be added: " + ex.getMessage());
         }
     }
 
     public void removeStaff() {
-        Input.sc.nextLine();
-        System.out.println("Removing Staff...");
-        System.out.print("Enter Staff ID: ");
-        String id = Input.sc.nextLine();
-        System.out.print("Enter Name: ");
-        String name = Input.sc.nextLine();
-        manager.removeStaff(name, id);
-        saveAll();
+        System.out.println("\n--- Removing Staff ---");
+        String id = Input.readNonEmptyString("Enter Staff ID: ");
+        String name = Input.readLine("Enter Name (optional, press Enter to skip): ");
+        if (manager.removeStaff(name, id)) {
+            saveAll();
+        }
     }
 
     public void searchStaff() {
-        Input.sc.nextLine();
-        System.out.println("Searching Staff...");
-        System.out.print("Enter Staff ID: ");
-        String id = Input.sc.nextLine();
-        System.out.print("Enter Name: ");
-        String name = Input.sc.nextLine();
+        System.out.println("\n--- Searching Staff ---");
+        String id = Input.readLine("Enter Staff ID (optional): ");
+        String name = Input.readLine("Enter Name (optional): ");
         manager.searchStaff(name, id);
     }
 
     public void run() {
         while (true) {
             displayMainMenu();
-            int choice = Input.sc.nextInt();
+            int choice = Input.readInt("Enter your choice (1-3): ", 1, 3);
 
             switch (choice) {
                 case 1:
@@ -412,7 +363,7 @@ public class Hotel {
                         boolean logout = false;
                         while (!logout) {
                             displayManagerMenu();
-                            int mChoice = Input.sc.nextInt();
+                            int mChoice = Input.readInt("Enter your choice (1-8): ", 1, 8);
 
                             switch (mChoice) {
                                 case 1: addRoom(); break;
@@ -424,12 +375,11 @@ public class Hotel {
                                 case 7: searchStaff(); break;
                                 case 8:
                                     logout = true;
-                                    Input.sc.nextLine();
                                     saveAll();
                                     System.out.println("Exiting the Manager module...\n");
                                     break;
                                 default:
-                                    System.out.println("Invalid choice. Try Again...");
+                                    System.out.println("Invalid choice.");
                                     break;
                             }
                         }
@@ -442,7 +392,7 @@ public class Hotel {
                         boolean logout = false;
                         while (!logout) {
                             displayReceptionistMenu();
-                            int rChoice = Input.sc.nextInt();
+                            int rChoice = Input.readInt("Enter your choice (1-8): ", 1, 8);
                             switch (rChoice) {
                                 case 1: checkInGuest(); break;
                                 case 2: checkOutGuest(); break;
@@ -457,7 +407,7 @@ public class Hotel {
                                     System.out.println("Exiting the Receptionist module...\n");
                                     break;
                                 default:
-                                    System.out.println("Invalid choice. Enter Again...");
+                                    System.out.println("Invalid choice.");
                                     break;
                             }
                         }
@@ -466,7 +416,7 @@ public class Hotel {
 
                 case 3:
                     saveAll();
-                    System.out.println("Exiting the System...\n");
+                    System.out.println("Exiting the System. Goodbye!\n");
                     return;
 
                 default:

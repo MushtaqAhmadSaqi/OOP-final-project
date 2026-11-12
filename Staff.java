@@ -7,6 +7,13 @@ public class Staff extends Employee {
     private String staffDescription;
     private Shift shiftType;
 
+    public Staff() {
+        super();
+        this.staffID = "S-UNKNOWN";
+        this.staffDescription = "General Staff";
+        this.shiftType = Shift.DAY;
+    }
+
     public Staff(String name, int contactNumber, double salary,
             String staffID, String staffDescription, Shift shiftType) {
         super(name, contactNumber, salary);
@@ -20,12 +27,12 @@ public class Staff extends Employee {
         if (this == obj) return true;
         if (!(obj instanceof Staff)) return false;
         Staff s = (Staff) obj;
-        return Objects.equals(staffID, s.staffID);
+        return staffID != null && staffID.equalsIgnoreCase(s.staffID);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(staffID);
+        return staffID != null ? staffID.toLowerCase().hashCode() : 0;
     }
 
     public String getStaffID() {
@@ -36,7 +43,11 @@ public class Staff extends Employee {
         if (staffID == null || staffID.trim().isEmpty()) {
             throw new IllegalArgumentException("Staff ID cannot be empty.");
         }
-        this.staffID = staffID.trim();
+        String cleanID = staffID.trim();
+        if (cleanID.length() > 50) {
+            throw new IllegalArgumentException("Staff ID cannot exceed 50 characters.");
+        }
+        this.staffID = cleanID;
     }
 
     public String getStaffDescription() {
@@ -47,7 +58,11 @@ public class Staff extends Employee {
         if (staffDescription == null || staffDescription.trim().isEmpty()) {
             throw new IllegalArgumentException("Staff role/description cannot be empty.");
         }
-        this.staffDescription = staffDescription.trim();
+        String cleanDesc = staffDescription.trim();
+        if (cleanDesc.length() > 100) {
+            throw new IllegalArgumentException("Staff description cannot exceed 100 characters.");
+        }
+        this.staffDescription = cleanDesc;
     }
 
     public Shift getShiftType() {

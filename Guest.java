@@ -7,7 +7,9 @@ public class Guest extends Person {
     private int familyMember;
 
     public Guest() {
-
+        super();
+        this.guestID = "G-UNKNOWN";
+        this.familyMember = 1;
     }
 
     public Guest(String guestID, String name, int contactNumber, int familyMember) {
@@ -30,7 +32,11 @@ public class Guest extends Person {
         if (guestID == null || guestID.trim().isEmpty()) {
             throw new IllegalArgumentException("Guest ID cannot be empty.");
         }
-        this.guestID = guestID.trim();
+        String cleanID = guestID.trim();
+        if (cleanID.length() > 50) {
+            throw new IllegalArgumentException("Guest ID cannot exceed 50 characters.");
+        }
+        this.guestID = cleanID;
     }
 
     public int getFamilyMember() {
@@ -41,6 +47,9 @@ public class Guest extends Person {
         if (familyMember <= 0) {
             throw new IllegalArgumentException("Family members must be at least 1.");
         }
+        if (familyMember > 50) {
+            throw new IllegalArgumentException("Family members count is unreasonably high.");
+        }
         this.familyMember = familyMember;
     }
 
@@ -49,11 +58,11 @@ public class Guest extends Person {
         if (this == o) return true;
         if (!(o instanceof Guest)) return false;
         Guest guest = (Guest) o;
-        return Objects.equals(guestID, guest.guestID);
+        return guestID != null && guestID.equalsIgnoreCase(guest.guestID);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(guestID);
+        return guestID != null ? guestID.toLowerCase().hashCode() : 0;
     }
 }

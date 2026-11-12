@@ -1,10 +1,17 @@
 import java.io.*;
+
 public abstract class Room implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private int roomNumber;
     private double pricePerNight;
     private boolean status;
+
+    public Room() {
+        this.roomNumber = 100;
+        this.pricePerNight = 100.0;
+        this.status = true;
+    }
 
     public Room(int roomNumber, double pricePerNight) { 
         setRoomNumber(roomNumber);
@@ -35,14 +42,14 @@ public abstract class Room implements Serializable {
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
-        if (obj == null || this.getClass() != obj.getClass()) return false;
+        if (!(obj instanceof Room)) return false;
         Room room = (Room) obj;
         return this.roomNumber == room.roomNumber;
     }
 
     @Override
     public int hashCode() {
-        return 31 * getClass().hashCode() + Integer.hashCode(roomNumber);
+        return Integer.hashCode(roomNumber);
     }
     
     @Override
@@ -58,14 +65,14 @@ public abstract class Room implements Serializable {
 
     public void setRoomNumber(int roomNumber) {
         if (roomNumber <= 0) {
-            throw new IllegalArgumentException("Invalid room number.");
+            throw new IllegalArgumentException("Invalid room number. Must be greater than 0.");
         }
         this.roomNumber = roomNumber;
     }    
 
     public void setPricePerNight(double pricePerNight) {
-        if (pricePerNight <= 0) {
-            throw new IllegalArgumentException("Price must be greater than zero.");
+        if (pricePerNight <= 0 || Double.isNaN(pricePerNight) || Double.isInfinite(pricePerNight)) {
+            throw new IllegalArgumentException("Price must be a valid positive number.");
         }
         this.pricePerNight = pricePerNight;
     }
@@ -80,6 +87,10 @@ class SingleRoom extends Room {
 
     private final String bedType = "Single";
     private final int maxCapacity = 1;
+
+    public SingleRoom() {
+        super();
+    }
 
     public SingleRoom(int roomNumber, double pricePerNight) {
         super(roomNumber, pricePerNight);
@@ -123,6 +134,10 @@ class DoubleRoom extends Room {
     private final String bedType = "Queen";
     private final int maxCapacity = 2;
 
+    public DoubleRoom() {
+        super();
+    }
+
     public DoubleRoom(int roomNumber, double pricePerNight) {
         super(roomNumber, pricePerNight);
     }
@@ -164,6 +179,10 @@ class FamilyRoom extends Room {
 
     private final String bedType = "Two Double Beds";
     private final int maxCapacity = 4;
+
+    public FamilyRoom() {
+        super();
+    }
 
     public FamilyRoom(int roomNumber, double pricePerNight) {
         super(roomNumber, pricePerNight);

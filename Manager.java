@@ -18,8 +18,10 @@ public class Manager extends Employee {
         }
         this.managerID = managerID.trim();
         this.passCode = passCode;
-        rooms = FileManager.loadFromFile("rooms.ser");
-        staff = FileManager.loadFromFile("staff.ser");
+        this.rooms = FileManager.loadFromFile("rooms.ser");
+        this.staff = FileManager.loadFromFile("staff.ser");
+        if (this.rooms == null) this.rooms = new ArrayList<>();
+        if (this.staff == null) this.staff = new ArrayList<>();
     }
 
     public Room selectRoom(int roomNo) {
@@ -28,11 +30,16 @@ public class Manager extends Employee {
                 return room;
             }
         }
-        System.out.println("Room Not Found!");
         return null;
     }
 
     public void addRoom(int roomNo, double pricePerNight, Hotel.RoomType rt) {
+        if (roomNo <= 0) {
+            throw new IllegalArgumentException("Room number must be greater than zero.");
+        }
+        if (pricePerNight <= 0 || Double.isNaN(pricePerNight) || Double.isInfinite(pricePerNight)) {
+            throw new IllegalArgumentException("Price per night must be a valid positive number.");
+        }
         if (rt == null) {
             throw new IllegalArgumentException("Room type is required.");
         }
@@ -52,36 +59,37 @@ public class Manager extends Employee {
                 room = new FamilyRoom(roomNo, pricePerNight);
                 break;
             default:
-                throw new IllegalArgumentException("RoomType Invalid!");
+                throw new IllegalArgumentException("Room type invalid!");
         }
         rooms.add(room);
         System.out.println("ROOM\n" + room + "\nSUCCESSFULLY ADDED!");
     }
 
-    public void removeRoom(int roomNumber) {
-        for (Room room : rooms) {
-            if (room.getRoomNumber() == roomNumber && !room.getStatus()) {
-                System.out.println("Room cannot be removed because it is currently booked!");
-                return;
+    public boolean removeRoom(int roomNumber) {
+        for (int i = 0; i < rooms.size(); i++) {
+            Room room = rooms.get(i);
+            if (room.getRoomNumber() == roomNumber) {
+                if (!room.getStatus()) {
+                    System.out.println("Room " + roomNumber + " cannot be removed because it is currently booked!");
+                    return false;
+                }
+                rooms.remove(i);
+                System.out.println("Room " + roomNumber + " removed successfully.");
+                return true;
             }
         }
 
-        boolean removed = rooms.removeIf((r) -> r.getRoomNumber() == roomNumber);
-        if (removed) System.out.println("Room removed Successfully");
-        else System.out.println("Error Removing Room (Maybe Room Not Found)");
+        System.out.println("Error Removing Room: Room " + roomNumber + " not found.");
+        return false;
     }
 
     public void searchRoom(int roomNumber) {
-        if (!roomExists(roomNumber)) {
-            System.out.println("Error Finding Room. Room may not Exist!");
-            return;
-        }
-
-        for (Room room : rooms) {
-            if (room.getRoomNumber() == roomNumber) {
-                System.out.println("Room with Room Number " + roomNumber + " is found");
-                System.out.println(room);
-            }
+        Room r = selectRoom(roomNumber);
+        if (r != null) {
+            System.out.println("Room with Room Number " + roomNumber + " is found:");
+            System.out.println(r);
+        } else {
+            System.out.println("Error Finding Room. Room " + roomNumber + " does not exist!");
         }
     }
 
@@ -96,6 +104,7 @@ public class Manager extends Employee {
     }
 
     public ArrayList<Room> getRooms() {
+        if (rooms == null) rooms = new ArrayList<>();
         return rooms;
     }
 
@@ -111,54 +120,68 @@ public class Manager extends Employee {
     }
 
     public boolean staffExists(String staffID) {
-        if (staffID == null) return false;
+        if (staffID == null || staffID.trim().isEmpty()) return false;
+        String cleanID = staffID.trim();
         for (Staff s : staff) {
-            if (s.getStaffID().equalsIgnoreCase(staffID.trim())) {
+            if (s.getStaffID().equalsIgnoreCase(cleanID)) {
                 return true;
             }
         }
         return false;
     }
 
-    public void removeStaff(String name, String staffID) {
+    public boolean removeStaff(String name, String staffID) {
         if (staffID == null || staffID.trim().isEmpty()) {
             System.out.println("Invalid staff ID.");
-            return;
+            return false;
         }
+        String cleanId = staffID.trim();
+        String cleanName = (name != null) ? name.trim() : "";
 
         for (int i = staff.size() - 1; i >= 0; i--) {
-            if (staff.get(i).getStaffID().equalsIgnoreCase(staffID.trim())) {
+            Staff s = staff.get(i);
+            if (s.getStaffID().equalsIgnoreCase(cleanId)) {
+                if (!cleanName.isEmpty() && !s.getName().equalsIgnoreCase(cleanName)) {
+                    System.out.println("Staff ID matches, but staff name does not match '" + cleanName + "'. Removal cancelled.");
+                    return false;
+                }
                 staff.remove(i);
-                System.out.println("Staff removed successfully.");
-                return;
+                System.out.println("Staff " + cleanId + " removed successfully.");
+                return true;
             }
         }
-        System.out.println("Staff not found!");
+        System.out.println("Staff with ID " + cleanId + " not found!");
+        return false;
     }
 
     public void searchStaff(String name, String staffID) {
+        String cleanName = (name != null) ? name.trim() : "";
+        String cleanId = (staffID != null) ? staffID.trim() : "";
+
+        if (cleanName.isEmpty() && cleanId.isEmpty()) {
+            System.out.println("Please provide a staff name or ID to search.");
+            return;
+        }
+
         boolean found = false;
-
         for (Staff s : staff) {
-            boolean nameMatch = name != null && s.getName().equalsIgnoreCase(name.trim());
-            boolean idMatch = staffID != null && s.getStaffID().equalsIgnoreCase(staffID.trim());
+            boolean nameMatch = !cleanName.isEmpty() && s.getName().equalsIgnoreCase(cleanName);
+            boolean idMatch = !cleanId.isEmpty() && s.getStaffID().equalsIgnoreCase(cleanId);
 
-            if (nameMatch && idMatch) {
-                System.out.println("Staff Member FOUND: Name and ID both match.");
-                found = true;
-                System.out.println("Staff Member details : ");
+            if (!cleanName.isEmpty() && !cleanId.isEmpty()) {
+                if (nameMatch && idMatch) {
+                    System.out.println("Staff Member FOUND (Name and ID match):");
+                    System.out.println(s);
+                    found = true;
+                } else if (idMatch) {
+                    System.out.println("Staff Member FOUND with ID " + cleanId + " (Name: " + s.getName() + "):");
+                    System.out.println(s);
+                    found = true;
+                }
+            } else if (nameMatch || idMatch) {
+                System.out.println("Staff Member FOUND:");
                 System.out.println(s);
-                break;
-            } else if (nameMatch) {
-                System.out.println("Name matches but ID does NOT match!");
                 found = true;
-                System.out.println("Staff Member details : ");
-                System.out.println(s);
-            } else if (idMatch) {
-                System.out.println("ID matches but Name does NOT match!");
-                found = true;
-                System.out.println("Staff Member details : ");
-                System.out.println(s);
             }
         }
 
@@ -176,6 +199,9 @@ public class Manager extends Employee {
                 System.out.println();
                 isAvailable = true;
             }
+        }
+        if (!isAvailable) {
+            System.out.println("No rooms currently available.");
         }
         return isAvailable;
     }
@@ -204,12 +230,12 @@ public class Manager extends Employee {
         if (this == obj) return true;
         if (!(obj instanceof Manager)) return false;
         Manager m = (Manager) obj;
-        return Objects.equals(managerID, m.managerID);
+        return managerID != null && managerID.equalsIgnoreCase(m.managerID);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(managerID);
+        return managerID != null ? managerID.toLowerCase().hashCode() : 0;
     }
 
     public String getManagerID() {
@@ -228,9 +254,12 @@ public class Manager extends Employee {
     public void load() {
         rooms = FileManager.loadFromFile("rooms.ser");
         staff = FileManager.loadFromFile("staff.ser");
+        if (rooms == null) rooms = new ArrayList<>();
+        if (staff == null) staff = new ArrayList<>();
     }
 
     public ArrayList<Staff> getStaff() {
+        if (staff == null) staff = new ArrayList<>();
         return staff;
     }
 }

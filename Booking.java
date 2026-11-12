@@ -10,7 +10,7 @@ public class Booking implements Serializable {
     private LocalDate checkInDate;
     
     public Booking() {
-        
+        this.checkInDate = LocalDate.now();
     }
     
     public Booking(Room room, Guest guest) {
@@ -22,17 +22,22 @@ public class Booking implements Serializable {
         }
         this.room = room;
         this.guest = guest;
-        checkInDate = LocalDate.now();
+        this.checkInDate = LocalDate.now();
     }
    
     public LocalDate getCheckInDate() {
-        return checkInDate;
+        return checkInDate != null ? checkInDate : LocalDate.now();
     }
 
     public Room getRoom() {
         return room;
     }
 
+    public Guest getGuest() {
+        return guest;
+    }
+
+    // Retained for backwards compatibility
     public Guest getGuests() {
         return guest;
     }
@@ -44,20 +49,25 @@ public class Booking implements Serializable {
         this.room = room;
     }
 
-    public void setGuests(Guest guest) {
+    public void setGuest(Guest guest) {
         if (guest == null) {
             throw new IllegalArgumentException("Guest cannot be null.");
         }
         this.guest = guest;
+    }
+
+    // Retained for backwards compatibility
+    public void setGuests(Guest guest) {
+        setGuest(guest);
     } 
     
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("Booking Date : ").append(checkInDate);
-        sb.append("\nGuest Name : ").append(guest.getName());
-        sb.append("\nGuest ID : ").append(guest.getGuestID());
-        sb.append("\nRoom Number : ").append(room.getRoomNumber());
+        sb.append("Booking Date : ").append(checkInDate != null ? checkInDate : "N/A");
+        sb.append("\nGuest Name : ").append(guest != null ? guest.getName() : "N/A");
+        sb.append("\nGuest ID : ").append(guest != null ? guest.getGuestID() : "N/A");
+        sb.append("\nRoom Number : ").append(room != null ? room.getRoomNumber() : "N/A");
         sb.append("\n===========\n");
         return sb.toString();
     }

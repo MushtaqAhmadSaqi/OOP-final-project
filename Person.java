@@ -7,7 +7,8 @@ public abstract class Person implements Serializable {
     private int contactNumber;
 
     public Person() {
-
+        this.name = "Unknown";
+        this.contactNumber = 1;
     }
 
     public Person(String name, int contactNumber) {
@@ -18,6 +19,9 @@ public abstract class Person implements Serializable {
     @Override
     public abstract boolean equals(Object o);
 
+    @Override
+    public abstract int hashCode();
+
     public String getName() {
         return name;
     }
@@ -26,7 +30,11 @@ public abstract class Person implements Serializable {
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("Name cannot be empty.");
         }
-        this.name = name.trim();
+        String cleanName = name.trim();
+        if (cleanName.length() > 100) {
+            throw new IllegalArgumentException("Name cannot exceed 100 characters.");
+        }
+        this.name = cleanName;
     }
 
     public int getContactNumber() {
@@ -42,6 +50,6 @@ public abstract class Person implements Serializable {
 
     @Override
     public String toString() {
-        return "Name : " + name + ", Contact : " + contactNumber;
+        return "Name : " + (name != null ? name : "Unknown") + ", Contact : " + contactNumber;
     }
 }

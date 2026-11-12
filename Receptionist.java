@@ -20,6 +20,7 @@ public class Receptionist extends Employee {
         this.receptID = receptID.trim();
         this.passCode = passCode;
         this.bookings = FileManager.loadFromFile("bookings.ser");
+        if (this.bookings == null) this.bookings = new ArrayList<>();
     }
     
     public String getReceptID() {
@@ -50,8 +51,17 @@ public class Receptionist extends Employee {
         if (!room.isAvailable()) {
             throw new IllegalArgumentException("Room " + room.getRoomNumber() + " is already booked.");
         }
+        // Double-check against bookings list in case room status was desynchronized
+        for (Booking b : bookings) {
+            if (b.getRoom() != null && b.getRoom().getRoomNumber() == room.getRoomNumber()) {
+                throw new IllegalArgumentException("Room " + room.getRoomNumber() + " already has an active booking.");
+            }
+        }
         if (hasActiveGuest(guest.getGuestID())) {
-            throw new IllegalArgumentException("Guest " + guest.getGuestID() + " is already checked in.");
+            throw new IllegalArgumentException("Guest with ID " + guest.getGuestID() + " is already checked in.");
+        }
+        if (guest.getFamilyMember() <= 0) {
+            throw new IllegalArgumentException("Family members must be at least 1.");
         }
         if (guest.getFamilyMember() > room.getMaxCapacity()) {
             throw new IllegalArgumentException("Guest group has " + guest.getFamilyMember()
@@ -60,9 +70,10 @@ public class Receptionist extends Employee {
     }
 
     public boolean hasActiveGuest(String guestID) {
-        if (guestID == null) return false;
+        if (guestID == null || guestID.trim().isEmpty()) return false;
+        String cleanID = guestID.trim();
         for (Booking b : bookings) {
-            if (b.getGuests().getGuestID().equalsIgnoreCase(guestID.trim())) {
+            if (b.getGuests() != null && b.getGuests().getGuestID().equalsIgnoreCase(cleanID)) {
                 return true;
             }
         }
@@ -74,23 +85,26 @@ public class Receptionist extends Employee {
             System.out.println("Invalid guest ID.");
             return -1;
         }
+        String cleanID = guestID.trim();
 
         for (int i = bookings.size() - 1; i >= 0; i--) {
             Booking b = bookings.get(i);
     
-            if (b.getGuests().getGuestID().equalsIgnoreCase(guestID.trim())) {
+            if (b.getGuests() != null && b.getGuests().getGuestID().equalsIgnoreCase(cleanID)) {
                 String billReceipt = generateBill(b); 
                 System.out.println(billReceipt);
                 
-                int roomNumber = b.getRoom().getRoomNumber();
-                b.getRoom().setStatus(true);
+                int roomNumber = (b.getRoom() != null) ? b.getRoom().getRoomNumber() : -1;
+                if (b.getRoom() != null) {
+                    b.getRoom().setStatus(true);
+                }
                 bookings.remove(i);
                 System.out.println("Guest Checked-out Successfully!");
                 return roomNumber; 
             }
         }
     
-        System.out.println("Guest [" + guestID + "] not found.");
+        System.out.println("Guest [" + cleanID + "] not found in active bookings.");
         return -1;
     }
 
@@ -100,87 +114,132 @@ public class Receptionist extends Employee {
         }
 
         LocalDate today = LocalDate.now();
-        long days = ChronoUnit.DAYS.between(b.getCheckInDate(), today);
+        LocalDate inDate = (b.getCheckInDate() != null) ? b.getCheckInDate() : today;
+        long days = ChronoUnit.DAYS.between(inDate, today);
         if (days <= 0) {
             days = 1;
         }
-        double totalAmount = b.getRoom().calculatePrice((int) days);
+
+        Room r = b.getRoom();
+        double totalAmount = (r != null) ? r.calculatePrice((int) Math.min(days, Integer.MAX_VALUE)) : 0.0;
     
         StringBuilder sb = new StringBuilder();
         sb.append("\n============= BILL RECEIPT =============\n");
-        sb.append("Guest Name   : ").append(b.getGuests().getName()).append("\n");
-        sb.append("Guest ID     : ").append(b.getGuests().getGuestID()).append("\n");
-        sb.append("Room Number  : ").append(b.getRoom().getRoomNumber()).append("\n");
-        sb.append("Check-in     : ").append(b.getCheckInDate()).append("\n");
+        sb.append("Guest Name   : ").append(b.getGuests() != null ? b.getGuests().getName() : "N/A").append("\n");
+        sb.append("Guest ID     : ").append(b.getGuests() != null ? b.getGuests().getGuestID() : "N/A").append("\n");
+        sb.append("Room Number  : ").append(r != null ? r.getRoomNumber() : "N/A").append("\n");
+        sb.append("Check-in     : ").append(inDate).append("\n");
         sb.append("Check-out    : ").append(today).append("\n");
         sb.append("Total Days   : ").append(days).append("\n");
-        sb.append("Total Amount : RS.").append(totalAmount).append("\n");
+        sb.append(String.format("Total Amount : RS.%.2f\n", totalAmount));
         sb.append("========================================\n");
         
         return sb.toString(); 
     }
 
-    public void modifyGuestInBooking(int roomNumber, Guest newGuest) {
+    public boolean modifyGuestInBooking(int roomNumber, Guest newGuest) {
         if (newGuest == null) {
             throw new IllegalArgumentException("Guest cannot be null.");
         }
 
         for (Booking b : bookings) {
-            if (b.getRoom().getRoomNumber() == roomNumber) {
-                if (!b.getGuests().getGuestID().equalsIgnoreCase(newGuest.getGuestID())
+            if (b.getRoom() != null && b.getRoom().getRoomNumber() == roomNumber) {
+                if (b.getGuests() != null && !b.getGuests().getGuestID().equalsIgnoreCase(newGuest.getGuestID())
                         && hasActiveGuest(newGuest.getGuestID())) {
-                    throw new IllegalArgumentException("Guest " + newGuest.getGuestID() + " is already checked in.");
+                    throw new IllegalArgumentException("Guest with ID " + newGuest.getGuestID() + " is already checked in.");
                 }
-                if (newGuest.getFamilyMember() > b.getRoom().getMaxCapacity()) {
-                    throw new IllegalArgumentException("Guest group exceeds room capacity.");
+                if (b.getRoom() != null && newGuest.getFamilyMember() > b.getRoom().getMaxCapacity()) {
+                    throw new IllegalArgumentException("Guest group exceeds room capacity of " + b.getRoom().getMaxCapacity() + ".");
                 }
                 b.setGuests(newGuest); 
                 System.out.println("Guest in room " + roomNumber + " updated successfully.");
-                return;
+                return true;
             }
         }
         System.out.println("Booking for room " + roomNumber + " not found.");
+        return false;
     }
 
     public void displayGuestHistory(String guestID) {
+        if (guestID == null || guestID.trim().isEmpty()) {
+            System.out.println("Invalid guest ID.");
+            return;
+        }
+        String cleanID = guestID.trim();
+        boolean found = false;
         for (Booking book : bookings) {
-            if (book.getGuests().getGuestID().equalsIgnoreCase(guestID)) {
+            if (book.getGuests() != null && book.getGuests().getGuestID().equalsIgnoreCase(cleanID)) {
                 System.out.println(book.getGuests());
+                if (book.getRoom() != null) {
+                    System.out.println("Currently residing in Room " + book.getRoom().getRoomNumber() + " (Checked in: " + book.getCheckInDate() + ")");
+                }
+                found = true;
             }
+        }
+        if (!found) {
+            System.out.println("No active bookings found for Guest ID: " + cleanID);
         }
     }
 
     public void displayActiveGuestIDs() {
+        if (bookings.isEmpty()) {
+            System.out.println("Active Guest IDs: [ None ]");
+            return;
+        }
         System.out.print("Active Guest IDs: [ ");
         for (Booking b : bookings) {
-            System.out.print(b.getGuests().getGuestID() + " "); 
+            if (b.getGuests() != null) {
+                System.out.print(b.getGuests().getGuestID() + " "); 
+            }
         }
         System.out.println("]");
     }
 
     public void displayRoomsNo() {
+        if (bookings.isEmpty()) {
+            System.out.println("No booked rooms currently.");
+            return;
+        }
         System.out.println("Room No of booked rooms : ");
         for (Booking booking : bookings) {
-            System.out.println(booking.getRoom().getRoomNumber());
+            if (booking.getRoom() != null) {
+                System.out.println(booking.getRoom().getRoomNumber());
+            }
         }
     }
    
     public void displayBookingHistory() {
-        System.out.println("=== Active Bookings ===");
+        if (bookings.isEmpty()) {
+            System.out.println("=== No Active Bookings ===");
+            return;
+        }
+        System.out.println("=== Active Bookings (" + bookings.size() + ") ===");
         for (Booking book : bookings) {
             System.out.println();
             System.out.println(book);
         }
     }
 
-    public void searchBooking(String name) {
+    public void searchBooking(String query) {
+        if (query == null || query.trim().isEmpty()) {
+            System.out.println("Please enter a guest name or ID to search.");
+            return;
+        }
+        String cleanQuery = query.trim();
+        boolean found = false;
         for (Booking book : bookings) {
-            if (book.getGuests().getName().equalsIgnoreCase(name)) {
-                System.out.println(book);
-                return;
+            if (book.getGuests() != null) {
+                boolean nameMatch = book.getGuests().getName().equalsIgnoreCase(cleanQuery);
+                boolean idMatch = book.getGuests().getGuestID().equalsIgnoreCase(cleanQuery);
+                if (nameMatch || idMatch) {
+                    System.out.println(book);
+                    found = true;
+                }
             }
         }
-        System.out.println("Booking not found!");
+        if (!found) {
+            System.out.println("Booking not found for query: " + cleanQuery);
+        }
     }
     
     @Override
@@ -188,12 +247,12 @@ public class Receptionist extends Employee {
         if (this == obj) return true;
         if (!(obj instanceof Receptionist)) return false;
         Receptionist recp = (Receptionist) obj;
-        return Objects.equals(receptID, recp.receptID);
+        return receptID != null && receptID.equalsIgnoreCase(recp.receptID);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(receptID);
+        return receptID != null ? receptID.toLowerCase().hashCode() : 0;
     }
 
     public void save() {
@@ -202,9 +261,11 @@ public class Receptionist extends Employee {
 
     public void load() {
         bookings = FileManager.loadFromFile("bookings.ser");
+        if (bookings == null) bookings = new ArrayList<>();
     }
 
     public ArrayList<Booking> getBookings() {
+        if (bookings == null) bookings = new ArrayList<>();
         return bookings;
     }
 }
